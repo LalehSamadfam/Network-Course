@@ -26,8 +26,13 @@
 #define _S_M_H_
 
 #include "machine.h"
+#include "utils.h"
+#include "city.h"
+
+class City;
 
 class SimulatedMachine : public Machine {
+	struct City * city;
 public:
 	SimulatedMachine (const ClientFramework *cf, int count);
 	virtual ~SimulatedMachine ();
@@ -35,7 +40,15 @@ public:
 	virtual void initialize ();
 	virtual void run ();
 	virtual void processFrame (Frame frame, int ifaceIndex);
+
+	mac_t getMac ();
+
+	ip_t getIp ();
 	
+	uint32_t getMask();
+
+	struct City * getCity () const;
+
 	static void parseArguments (int argc, char *argv[]);
 };
 

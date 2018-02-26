@@ -26,8 +26,14 @@
 #define _S_M_H_
 
 #include "machine.h"
+#include "utils.h"
+#include "bus.h"
+
+class Bus;
 
 class SimulatedMachine : public Machine {
+	Bus * bus;
+
 public:
 	SimulatedMachine (const ClientFramework *cf, int count);
 	virtual ~SimulatedMachine ();
@@ -35,7 +41,15 @@ public:
 	virtual void initialize ();
 	virtual void run ();
 	virtual void processFrame (Frame frame, int ifaceIndex);
+
+	mac_t getMac ();
+
+	ip_t getIp ();
 	
+	uint32_t getMask();
+
+	Bus * getBus () const;
+
 	static void parseArguments (int argc, char *argv[]);
 };
 

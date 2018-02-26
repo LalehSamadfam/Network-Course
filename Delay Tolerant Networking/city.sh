@@ -1,3 +1,4 @@
+#!/bin/bash
 source info.sh
 if [ "a$1" = "a" ]; then
   node="city-0"

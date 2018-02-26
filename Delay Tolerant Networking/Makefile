@@ -9,7 +9,7 @@
 #################################################
 
 CXX = g++
-FLAGS = -Wall -g -Ibase
+FLAGS = -Wall -g -Ibase -Iuser-common
 LIBS = -lpthread
 
 TARGET_BUS = bus.out
@@ -25,24 +25,35 @@ BASE_SOURCES = base/main.cpp \
 SUB_NAME = PA2
 
 # DO NOT LIST .H FILES HERE! JUST .C AND .CPP FILES
+USER_COMMON_SOURCES = user-common/message.cpp \
+	user-common/utils.cpp \
+	user-common/ip.cpp \
+	user-common/udp.cpp
+
 USER_BUS_SOURCES = user-bus/sm.cpp \
-	user-bus/facade.cpp
+	user-bus/facade.cpp \
+	user-bus/bus.cpp \
+	user-bus/utils-bus.cpp 
 
 USER_CITY_SOURCES = user-city/sm.cpp \
-	user-city/facade.cpp
+	user-city/facade.cpp \
+	user-city/city.cpp \
+	user-city/utils-city.cpp
 
 BASE_OBJ = ${BASE_SOURCES:.cpp=.o}
 BASE_OBJECTS = ${BASE_OBJ:.c=.o}
 
+USER_COMMON_OBJ = ${USER_COMMON_SOURCES:.cpp=.o}
+USER_COMMON_OBJECTS = ${USER_COMMON_OBJ:.c=.o}
 USER_BUS_OBJ = ${USER_BUS_SOURCES:.cpp=.o}
 USER_BUS_OBJECTS = ${USER_BUS_OBJ:.c=.o}
 USER_CITY_OBJ = ${USER_CITY_SOURCES:.cpp=.o}
 USER_CITY_OBJECTS = ${USER_CITY_OBJ:.c=.o}
 
-OBJECTS_BUS = ${BASE_OBJECTS} ${USER_BUS_OBJECTS}
-OBJECTS_CITY = ${BASE_OBJECTS} ${USER_CITY_OBJECTS}
+OBJECTS_BUS = ${BASE_OBJECTS} ${USER_COMMON_OBJECTS} ${USER_BUS_OBJECTS}
+OBJECTS_CITY = ${BASE_OBJECTS} ${USER_COMMON_OBJECTS} ${USER_CITY_OBJECTS}
 
-OBJECTS = ${BASE_OBJECTS} ${USER_BUS_OBJECTS} ${USER_CITY_OBJECTS}
+OBJECTS = ${BASE_OBJECTS} ${USER_COMMON_OBJECTS} ${USER_BUS_OBJECTS} ${USER_CITY_OBJECTS}
 
 all: ${TARGET_BUS} ${TARGET_CITY}
 

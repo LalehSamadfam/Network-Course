@@ -22,13 +22,14 @@
  *  
  */
 
+
 #include "sm.h"
 
 #include "sr_protocol.h"
 #include "interface.h"
 #include "frame.h"
-
 #include <netinet/in.h>
+#include "utils.h"
 
 using namespace std;
 
@@ -36,6 +37,7 @@ SimulatedMachine::SimulatedMachine (const ClientFramework *cf, int count) :
 	Machine (cf, count) {
 	// The machine instantiated.
 	// Interfaces are not valid at this point.
+	city = new City ();
 }
 
 SimulatedMachine::~SimulatedMachine () {
@@ -43,7 +45,10 @@ SimulatedMachine::~SimulatedMachine () {
 }
 
 void SimulatedMachine::initialize () {
-	// TODO: Initialize your program here; interfaces are valid now.
+	string info = this -> getCustomInformation();
+
+	uint8_t dt = string_to_int(info);
+	city -> set_default_ttl(dt);
 }
 
 /**
@@ -71,16 +76,27 @@ void SimulatedMachine::initialize () {
  */
 void SimulatedMachine::processFrame (Frame frame, int ifaceIndex) {
 	// TODO: process the raw frame; frame.data points to the frame's byte stream
-  // following code performs some sample checks. Replace them with your own complete checks....
-	cerr << "Frame received at iface " << ifaceIndex <<
-		" with length " << frame.length << endl;
-  struct sr_ethernet_hdr *eth = (struct sr_ethernet_hdr *) frame.data;
-  if (ntohs (eth->ether_type) == ETHERTYPE_IP
-      && frame.length >= sizeof (struct sr_ethernet_hdr) + sizeof (struct ip)) {
-    struct ip *packet = (struct ip *) (frame.data + sizeof (struct sr_ethernet_hdr));
-    struct in_addr dstip = packet->ip_dst; // in network byte order
-    cerr << "dst ip is " << inet_ntoa (dstip) << endl;
-  }
+    // following code performs some sample checks. Replace them with your own complete checks....
+		LOG("packet received");
+		if (is_udp_packet(frame)) {
+
+			port_t port = get_dst_port(frame);
+			switch (port) {
+			case 5000:
+				if (is_ip_broadcast(frame)) {
+					handle_udp_broadcast_request(frame, this);
+				} else {
+					// dropping packet
+				}
+				break;
+
+			case 8000:
+				handle_sync_request(frame, this);
+				break;
+			}
+		}
+
+
 }
 
 
@@ -91,21 +107,32 @@ void SimulatedMachine::processFrame (Frame frame, int ifaceIndex) {
 void SimulatedMachine::run () {
 	// TODO: write your business logic here...
   // following code sends a sample packet. Do not forget to remove it....
-  const int frameLength = sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arp);
-  byte *data = new byte[frameLength];
+	do {
+		string command;
+		cin >> command;
+		if (command == "print") {
+			city->get_bank()->print_messages();
+		} else if (command == "msg") {
+			read_msg_details(this);
+		}
+	} while (true);
+}
 
-  struct sr_ethernet_hdr *eth = (struct sr_ethernet_hdr *) data;
-  memset (eth->ether_dhost, 255, ETHER_ADDR_LEN); // broadcast address
-  memcpy (eth->ether_shost, iface[0].mac, ETHER_ADDR_LEN);
-  eth->ether_type = htons (ETHERTYPE_ARP);
 
-  struct sr_arp *arp = (struct sr_arp *) (data + sizeof (struct sr_ethernet_hdr));
-  (void) arp; // set fields of ARP header.......
+mac_t SimulatedMachine::getMac() {
+	return array_to_mac(iface[0].mac);
+}
 
-  Frame frame (frameLength, data);
-  sendFrame (frame, 0); // sends frame on interface 0
-  delete[] data;
-  cerr << "now ./free.sh and check the pcap log file to see the sent packet" << endl;
+ip_t SimulatedMachine::getIp() {
+	return iface[0].getIp();
+}
+
+uint32_t SimulatedMachine::getMask() {
+	return iface[0].getMask();
+}
+
+struct City * SimulatedMachine::getCity () const {
+	return city;
 }
 
 

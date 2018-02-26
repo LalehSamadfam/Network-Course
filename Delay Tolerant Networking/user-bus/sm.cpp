@@ -23,26 +23,28 @@
  */
 
 #include "sm.h"
-
 #include "sr_protocol.h"
 #include "interface.h"
 #include "frame.h"
-
 #include <netinet/in.h>
+
+#include "utils-bus.h"
+#include "bus.h"
 
 using namespace std;
 
-SimulatedMachine::SimulatedMachine (const ClientFramework *cf, int count) :
-	Machine (cf, count) {
+SimulatedMachine::SimulatedMachine(const ClientFramework *cf, int count) :
+		Machine(cf, count) {
 	// The machine instantiated.
 	// Interfaces are not valid at this point.
+	bus = new Bus ();
 }
 
-SimulatedMachine::~SimulatedMachine () {
+SimulatedMachine::~SimulatedMachine() {
 	// destructor...
 }
 
-void SimulatedMachine::initialize () {
+void SimulatedMachine::initialize() {
 	// TODO: Initialize your program here; interfaces are valid now.
 }
 
@@ -69,56 +71,64 @@ void SimulatedMachine::initialize () {
  *     };
  * </code>
  */
-void SimulatedMachine::processFrame (Frame frame, int ifaceIndex) {
+void SimulatedMachine::processFrame(Frame frame, int ifaceIndex) {
 	// TODO: process the raw frame; frame.data points to the frame's byte stream
-  // following code performs some sample checks. Replace them with your own complete checks....
-	cerr << "Frame received at iface " << ifaceIndex <<
-		" with length " << frame.length << endl;
-  struct sr_ethernet_hdr *eth = (struct sr_ethernet_hdr *) frame.data;
-  if (ntohs (eth->ether_type) == ETHERTYPE_IP
-      && frame.length >= sizeof (struct sr_ethernet_hdr) + sizeof (struct ip)) {
-    struct ip *packet = (struct ip *) (frame.data + sizeof (struct sr_ethernet_hdr));
-    struct in_addr dstip = packet->ip_dst; // in network byte order
-    cerr << "dst ip is " << inet_ntoa (dstip) << endl;
-  }
-}
+	// following code performs some sample checks. Replace them with your own complete checks....
 
+	if (is_udp_packet(frame)){
+		port_t port = get_dst_port (frame);
+
+		switch (port) {
+		case 5000:
+			handle_scan_response(frame, this);
+			break;
+		case 3000:
+			handle_sync_response(frame, this);
+			break;
+		}
+	}
+}
 
 /**
  * This method will be run from an independent thread. Use it if needed or simply return.
  * Returning from this method will not finish the execution of the program.
  */
-void SimulatedMachine::run () {
+void SimulatedMachine::run() {
 	// TODO: write your business logic here...
-  // following code sends a sample packet. Do not forget to remove it....
-  const int frameLength = sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arp);
-  byte *data = new byte[frameLength];
+	do {
+		string command;
+		cin >> command;
+		if (command == "print") {
+			bus->get_bank()->print_messages();
+		} else if (command == "walk") {
+			walk();
+			bus->clear_cities_infos(); // TODO remove this line if needed!
+		} else if (command == "scan") {
+			send_scan_request(this);
+		} else if (command == "sync") {
+			LOG("command sync has been entered");
+			send_sync_request(this);
+		}
+	} while (true);
 
-  struct sr_ethernet_hdr *eth = (struct sr_ethernet_hdr *) data;
-  memset (eth->ether_dhost, 255, ETHER_ADDR_LEN); // broadcast address
-  memcpy (eth->ether_shost, iface[0].mac, ETHER_ADDR_LEN);
-  eth->ether_type = htons (ETHERTYPE_ARP);
-
-  struct sr_arp *arp = (struct sr_arp *) (data + sizeof (struct sr_ethernet_hdr));
-  (void) arp; // set fields of ARP header.......
-
-  Frame frame (frameLength, data);
-  sendFrame (frame, 0); // sends frame on interface 0
-  delete[] data;
-  cerr << "now ./free.sh and check the pcap log file to see the sent packet" << endl;
-
-  string command;
-  cin >> command;
-  if (command == "walk") {
-    walk ();
-  }
 }
 
+mac_t SimulatedMachine::getMac() {
+	return array_to_mac(iface[0].mac);
+}
+
+ip_t SimulatedMachine::getIp() {
+	return iface[0].getIp();
+}
+
+Bus * SimulatedMachine::getBus () const {
+	return bus;
+}
 
 /**
  * You could ignore this method if you are not interested on custom arguments.
  */
-void SimulatedMachine::parseArguments (int argc, char *argv[]) {
+void SimulatedMachine::parseArguments(int argc, char *argv[]) {
 	// TODO: parse arguments which are passed via --args
 }
 
